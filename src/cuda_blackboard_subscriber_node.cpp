@@ -3,6 +3,7 @@
 #include "cuda_blackboard/cuda_adaptation.hpp"
 #include "cuda_blackboard/cuda_blackboard_subscriber.hpp"
 #include "cuda_blackboard/cuda_image.hpp"
+#include "cuda_blackboard/copy_tracker.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_components/register_node_macro.hpp>
@@ -33,9 +34,9 @@ public:
       ros_image->step = cuda_msg->step;
       ros_image->is_bigendian = cuda_msg->is_bigendian;
       ros_image->data.resize(cuda_msg->height * ros_image->step);
-      cudaMemcpy(
+      tracked_cuda_memcpy(
         ros_image->data.data(), cuda_msg->data.get(), ros_image->height * ros_image->step,
-        cudaMemcpyDeviceToHost);
+        cudaMemcpyDeviceToHost, "CudaBlackboardSubscriberNode output image");
 
       pub_->publish(std::move(ros_image));
     };

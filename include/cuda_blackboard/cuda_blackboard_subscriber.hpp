@@ -24,6 +24,11 @@ public:
     rclcpp::Node & node, const std::string & topic_name,
     std::function<void(std::shared_ptr<const T>)> callback);
 
+  CudaBlackboardSubscriber(
+    rclcpp::Node & node, const std::string & topic_name,
+    const std::string & compatible_topic_name,
+    std::function<void(std::shared_ptr<const T>)> callback);
+
 private:
   void instanceIdCallback(const std_msgs::msg::UInt64 & instance_id_msg);
 

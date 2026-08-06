@@ -1,10 +1,13 @@
 
 #pragma once
+#include <cstdint>
 
+#include "cuda_blackboard/gpu_pointcloud_memory_pool.hpp"
 #include "cuda_blackboard/cuda_unique_ptr.hpp"
 
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <functional>
 #include <memory>
 
 namespace cuda_blackboard
@@ -39,10 +42,20 @@ public:
   CudaPointCloud2(CudaPointCloud2 && pointcloud);
   CudaPointCloud2 & operator=(CudaPointCloud2 &&);
   CudaPointCloud2(const sensor_msgs::msg::PointCloud2 & source);
+  CudaPointCloud2(
+    const sensor_msgs::msg::PointCloud2 & metadata,
+    GpuPointCloudMemoryPool::Lease && device_memory_lease);
 
   ~CudaPointCloud2();
 
-  CudaUniquePtr<std::uint8_t[]> data;
+  using DeviceDataPtr = std::unique_ptr<std::uint8_t[], std::function<void(std::uint8_t *)>>;
+
+  DeviceDataPtr data;
+  std::size_t device_capacity_bytes() const;
+  bool is_pool_backed() const;
+
+private:
+  GpuPointCloudMemoryPool::Lease device_memory_lease_;
 };
 
 }  // namespace cuda_blackboard

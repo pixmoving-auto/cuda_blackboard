@@ -22,6 +22,7 @@ public:
 
   std::size_t get_subscription_count() const;
   std::size_t get_intra_process_subscription_count() const;
+  bool has_subscribers() const;
 
 private:
   rclcpp::Node & node_;

@@ -1,5 +1,6 @@
 
 
+#include <cstdint>
 #pragma once
 
 #include "cuda_blackboard/cuda_unique_ptr.hpp"

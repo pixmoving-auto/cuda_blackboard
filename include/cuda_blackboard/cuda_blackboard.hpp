@@ -43,11 +43,13 @@ public:
     const std::string & producer_name, std::unique_ptr<const T> value, std::size_t tickets);
   std::shared_ptr<const T> queryData(const std::string & producer_name);
   std::shared_ptr<const T> queryData(uint64_t instance_id);
+  std::size_t getEntryCount() const;
+  std::size_t getTotalTickets() const;
 
 private:
   std::unordered_map<std::string, CudaBlackboardDataWrapperPtr> producer_to_data_map_;
   std::unordered_map<uint64_t, CudaBlackboardDataWrapperPtr> instance_id_to_data_map_;
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
 
   CudaBlackboard() {}
   CudaBlackboard(const CudaBlackboard &) = delete;

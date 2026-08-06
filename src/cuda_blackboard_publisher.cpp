@@ -23,7 +23,7 @@ CudaBlackboardPublisher<T>::CudaBlackboardPublisher(
 
   negotiated_pub_->add_supported_type<NegotiationStruct<T>>(
     1.0,
-    rclcpp::QoS(1),  //.durability_volatile(),
+    rclcpp::SensorDataQoS().keep_last(1),
     pub_options);
 
   std::string ros_type_name = NegotiationStruct<typename T::ros_type>::supported_type_name;
@@ -45,12 +45,15 @@ void CudaBlackboardPublisher<T>::publish(std::unique_ptr<const T> cuda_msg_ptr)
     negotiated::detail::generate_key(ros_type_name, NegotiationStruct<T>::supported_type_name);
 
   uint64_t instance_id{0};
-  bool publish_ros_msg =
-    negotiated_pub_->type_was_negotiated<NegotiationStruct<typename T::ros_type>>() &&
-    (compatible_pub_->get_subscription_count() > 0 ||
-     compatible_pub_->get_intra_process_subscription_count() > 0);
+  const bool has_compatible_subscribers =
+    compatible_pub_->get_subscription_count() > 0 ||
+    compatible_pub_->get_intra_process_subscription_count() > 0;
   bool publish_blackboard_msg =
     negotiated_pub_->type_was_negotiated<NegotiationStruct<T>>() && map.count(key_name) > 0;
+  bool publish_ros_msg =
+    has_compatible_subscribers &&
+    (!publish_blackboard_msg ||
+     negotiated_pub_->type_was_negotiated<NegotiationStruct<typename T::ros_type>>());
 
   auto & blackboard = CudaBlackboard<T>::getInstance();
 
@@ -62,6 +65,11 @@ void CudaBlackboardPublisher<T>::publish(std::unique_ptr<const T> cuda_msg_ptr)
                                                           // subscribers
 
     if (tickets == 0) {
+      if (publish_ros_msg) {
+        auto ros_msg_ptr = std::make_unique<typename T::ros_type>();
+        rclcpp::TypeAdapter<T>::convert_to_ros_message(*cuda_msg_ptr, *ros_msg_ptr);
+        compatible_pub_->publish(std::move(ros_msg_ptr));
+      }
       return;
     }
 
@@ -115,6 +123,18 @@ std::size_t CudaBlackboardPublisher<T>::get_intra_process_subscription_count() c
       p.second.publisher ? p.second.publisher->get_intra_process_subscription_count() : 0;
     return count + sub_count;
   });
+}
+
+template <typename T>
+bool CudaBlackboardPublisher<T>::has_subscribers() const
+{
+  if (
+    compatible_pub_->get_subscription_count() > 0 ||
+    compatible_pub_->get_intra_process_subscription_count() > 0) {
+    return true;
+  }
+
+  return get_subscription_count() > 0 || get_intra_process_subscription_count() > 0;
 }
 
 }  // namespace cuda_blackboard

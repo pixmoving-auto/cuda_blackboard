@@ -33,12 +33,13 @@ uint64_t CudaBlackboard<T>::registerData(
     std::make_shared<CudaBlackboardDataWrapper<T>>(
       std::move(data), producer_name, instance_id, tickets);
 
-  if (producer_to_data_map_.count(producer_name) > 0) {
-    RCLCPP_WARN_STREAM(
+  const auto existing = producer_to_data_map_.find(producer_name);
+  if (existing != producer_to_data_map_.end()) {
+    RCLCPP_DEBUG_STREAM(
       rclcpp::get_logger("CudaBlackboard"),
-      "Producer " << producer_name << " already exists. Deleting. It had "
-                  << producer_to_data_map_[producer_name]->tickets_ << " tickets left");
-    instance_id_to_data_map_.erase(producer_to_data_map_[producer_name]->instance_id_);
+      "Producer " << producer_name << " already exists. Replacing stale data. It had "
+                  << existing->second->tickets_ << " tickets left");
+    instance_id_to_data_map_.erase(existing->second->instance_id_);
     producer_to_data_map_.erase(producer_name);
   }
 
@@ -58,6 +59,15 @@ std::shared_ptr<const T> CudaBlackboard<T>::queryData(const std::string & produc
   auto it = producer_to_data_map_.find(producer_name);
 
   if (it != producer_to_data_map_.end()) {
+    if (it->second->tickets_ == 0) {
+      RCLCPP_WARN_STREAM(
+        rclcpp::get_logger("CudaBlackboard"),
+        "Producer " << producer_name << " has no tickets left. Removing stale data.");
+      instance_id_to_data_map_.erase(it->second->instance_id_);
+      producer_to_data_map_.erase(it);
+      return std::shared_ptr<const T>{};
+    }
+
     it->second->tickets_--;
     auto data = it->second->data_ptr_;
 
@@ -84,6 +94,15 @@ std::shared_ptr<const T> CudaBlackboard<T>::queryData(uint64_t instance_id)
   auto it = instance_id_to_data_map_.find(instance_id);
 
   if (it != instance_id_to_data_map_.end()) {
+    if (it->second->tickets_ == 0) {
+      RCLCPP_WARN_STREAM(
+        rclcpp::get_logger("CudaBlackboard"),
+        "Instance " << instance_id << " has no tickets left. Removing stale data.");
+      producer_to_data_map_.erase(it->second->producer_name_);
+      instance_id_to_data_map_.erase(it);
+      return std::shared_ptr<const T>{};
+    }
+
     it->second->tickets_--;
     std::shared_ptr<const T> data = it->second->data_ptr_;
 
@@ -103,6 +122,24 @@ std::shared_ptr<const T> CudaBlackboard<T>::queryData(uint64_t instance_id)
   }
 
   return std::shared_ptr<const T>{};  // Indicate that the key was not found
+}
+
+template <typename T>
+std::size_t CudaBlackboard<T>::getEntryCount() const
+{
+  std::lock_guard<std::mutex> lock(mutex_);
+  return instance_id_to_data_map_.size();
+}
+
+template <typename T>
+std::size_t CudaBlackboard<T>::getTotalTickets() const
+{
+  std::lock_guard<std::mutex> lock(mutex_);
+  std::size_t tickets = 0;
+  for (const auto & entry : instance_id_to_data_map_) {
+    tickets += entry.second->tickets_;
+  }
+  return tickets;
 }
 
 }  // namespace cuda_blackboard

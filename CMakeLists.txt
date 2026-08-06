@@ -5,7 +5,8 @@ find_package(ament_cmake_auto REQUIRED)
 find_package(CUDA)
 
 if(NOT ${CUDA_FOUND})
-  message(WARNING "cuda was not found. the cuda_blackboard package will not be built.")
+  message(WARNING "cuda was not found. the cuda_blackboard libraries will not be built.")
+  ament_auto_package()
   return()
 endif()
 
@@ -36,12 +37,40 @@ ament_auto_add_library(cuda_blackboard SHARED
     src/cuda_blackboard.cpp
     src/cuda_image.cpp
     src/cuda_pointcloud2.cpp
+    src/copy_tracker.cpp
+    src/gpu_pointcloud_memory_pool.cpp
     src/cuda_blackboard_publisher.cpp
     src/cuda_blackboard_subscriber.cpp
 )
 
 target_link_libraries(cuda_blackboard
     ${CUDA_LIBRARIES}
+)
+
+add_executable(cuda_pointcloud_memory_pool_smoke_test
+  src/gpu_pointcloud_memory_pool_smoke_test.cpp
+)
+
+target_link_libraries(cuda_pointcloud_memory_pool_smoke_test
+  cuda_blackboard
+  ${CUDA_LIBRARIES}
+)
+
+install(TARGETS cuda_pointcloud_memory_pool_smoke_test
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+add_executable(cuda_pointcloud2_pool_smoke_test
+  src/cuda_pointcloud2_pool_smoke_test.cpp
+)
+
+target_link_libraries(cuda_pointcloud2_pool_smoke_test
+  cuda_blackboard
+  ${CUDA_LIBRARIES}
+)
+
+install(TARGETS cuda_pointcloud2_pool_smoke_test
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ####

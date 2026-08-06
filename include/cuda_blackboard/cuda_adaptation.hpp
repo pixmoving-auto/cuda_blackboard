@@ -3,6 +3,7 @@
 
 #include "cuda_blackboard/cuda_image.hpp"
 #include "cuda_blackboard/cuda_pointcloud2.hpp"
+#include "cuda_blackboard/copy_tracker.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/type_adapter.hpp>
@@ -27,9 +28,9 @@ struct rclcpp::TypeAdapter<cuda_blackboard::CudaImage, sensor_msgs::msg::Image>
 
     RCLCPP_DEBUG(rclcpp::get_logger("CudaImage"), "Converting to ROS message");
     destination.data.resize(source.height * source.step * sizeof(uint8_t));
-    cudaMemcpy(
+    cuda_blackboard::tracked_cuda_memcpy(
       destination.data.data(), source.data.get(), source.height * source.step * sizeof(uint8_t),
-      cudaMemcpyDeviceToHost);
+      cudaMemcpyDeviceToHost, "CudaImage TypeAdapter to ROS");
   }
 
   static void convert_to_custom(const ros_message_type & source, custom_type & destination)
@@ -43,9 +44,9 @@ struct rclcpp::TypeAdapter<cuda_blackboard::CudaImage, sensor_msgs::msg::Image>
 
     cudaMalloc(
       reinterpret_cast<void **>(&destination.data), source.height * source.step * sizeof(uint8_t));
-    cudaMemcpy(
+    cuda_blackboard::tracked_cuda_memcpy(
       destination.data.get(), source.data.data(), source.height * source.step * sizeof(uint8_t),
-      cudaMemcpyHostToDevice);
+      cudaMemcpyHostToDevice, "CudaImage TypeAdapter from ROS");
   }
 };
 
@@ -68,9 +69,10 @@ struct rclcpp::TypeAdapter<cuda_blackboard::CudaPointCloud2, sensor_msgs::msg::P
     destination.is_dense = source.is_dense;
 
     destination.data.resize(source.height * source.width * source.point_step);
-    cudaMemcpy(
+    cuda_blackboard::tracked_cuda_memcpy(
       destination.data.data(), source.data.get(),
-      source.height * source.width * source.point_step * sizeof(uint8_t), cudaMemcpyDeviceToHost);
+      source.height * source.width * source.point_step * sizeof(uint8_t), cudaMemcpyDeviceToHost,
+      "CudaPointCloud2 TypeAdapter to ROS");
   }
 
   static void convert_to_custom(const ros_message_type & source, custom_type & destination)
@@ -88,9 +90,10 @@ struct rclcpp::TypeAdapter<cuda_blackboard::CudaPointCloud2, sensor_msgs::msg::P
     cudaMalloc(
       reinterpret_cast<void **>(&destination.data),
       source.height * source.width * source.point_step * sizeof(uint8_t));
-    cudaMemcpy(
+    cuda_blackboard::tracked_cuda_memcpy(
       destination.data.get(), source.data.data(),
-      source.height * source.width * source.point_step * sizeof(uint8_t), cudaMemcpyHostToDevice);
+      source.height * source.width * source.point_step * sizeof(uint8_t), cudaMemcpyHostToDevice,
+      "CudaPointCloud2 TypeAdapter from ROS");
   }
 };
 
