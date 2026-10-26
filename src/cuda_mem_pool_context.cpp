@@ -39,7 +39,7 @@ CudaMemPoolContext::CudaMemPoolContext()
   CUDA_BLACKBOARD_CHECK_CUDA_ERROR(cudaStreamCreateWithFlags(&free_stream_, cudaStreamNonBlocking));
 
   int device_id = 0;
-  CUDA_BLACKBOARD_CHECK_CUDA_ERROR(cudaStreamGetDevice(stream_, &device_id));
+  CUDA_BLACKBOARD_CHECK_CUDA_ERROR(cudaGetDevice(&device_id));
 
   cudaMemPoolProps pool_props = {};
   pool_props.allocType = cudaMemAllocationTypePinned;
